@@ -1,158 +1,489 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Grid · Dots</title>
-  <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>2048</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-    :root {
-      --grid-size: min(80vw, 80vh, 480px);
-      --gap: calc(var(--grid-size) / 40);
-      --radius: calc(var(--grid-size) / 32);
-      --cell-size: calc((var(--grid-size) - var(--gap) * 5) / 4);
-      --dot-size: calc(var(--cell-size) * 0.62);
-    }
+:root{
+  --size: min(96vw, 96vh, 520px);
+  --gap: calc(var(--size)/40);
+  --cell: calc((var(--size) - var(--gap)*5) / 4);
+  --r: calc(var(--size)/32);
+  --bg: #faf5ee;
+  --board: #bbada0;
+  --empty: #cdc1b4;
+  --trans: 120ms;
+}
 
-    body {
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #f0ede8;
-      font-family: system-ui, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
+body{
+  min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--bg);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  user-select:none;
+}
 
-    h1 {
-      font-size: clamp(0.85rem, 3vmin, 1.1rem);
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #a09890;
-      margin-bottom: calc(var(--gap) * 2);
-      user-select: none;
-    }
+.header{
+  width:var(--size);
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:calc(var(--gap)*1.2);
+}
+.title{font-size:clamp(2rem,10vmin,3.2rem);font-weight:800;color:#776e65;letter-spacing:-1px}
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(4, var(--cell-size));
-      grid-template-rows: repeat(4, var(--cell-size));
-      gap: var(--gap);
-      padding: var(--gap);
-      background: #e6e1da;
-      border-radius: calc(var(--radius) * 1.5);
-      box-shadow:
-        0 2px 6px rgba(0,0,0,0.06),
-        0 8px 28px rgba(0,0,0,0.10),
-        inset 0 1px 0 rgba(255,255,255,0.6);
-    }
+.scores{display:flex;gap:calc(var(--gap)*0.8)}
+.score-box{
+  background:#bbada0;border-radius:calc(var(--r)*0.7);
+  padding:6px 14px;text-align:center;min-width:72px;
+}
+.score-box .label{font-size:clamp(0.55rem,2vmin,0.7rem);font-weight:700;letter-spacing:.08em;color:#eee4da;text-transform:uppercase}
+.score-box .val{font-size:clamp(1rem,4vmin,1.4rem);font-weight:800;color:#fff}
 
-    .cell {
-      width: var(--cell-size);
-      height: var(--cell-size);
-      background: #faf8f5;
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow:
-        0 1px 3px rgba(0,0,0,0.08),
-        inset 0 1px 0 rgba(255,255,255,0.8);
-      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
-      position: relative;
-      overflow: hidden;
-    }
+.btn-new{
+  background:#8f7a66;color:#f9f6f2;border:none;border-radius:calc(var(--r)*0.7);
+  padding:8px 16px;font-size:clamp(0.72rem,2.5vmin,0.9rem);font-weight:700;
+  cursor:pointer;letter-spacing:.04em;transition:background .15s,transform .1s;
+}
+.btn-new:hover{background:#776e65}
+.btn-new:active{transform:scale(.95)}
 
-    .cell:hover {
-      background: #fff;
-      transform: scale(1.03);
-    }
+.board{
+  position:relative;
+  width:var(--size);height:var(--size);
+  background:var(--board);
+  border-radius:calc(var(--r)*1.2);
+  padding:var(--gap);
+  box-shadow:0 4px 20px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.12);
+}
 
-    .cell:active {
-      transform: scale(0.96);
-    }
+.cells-bg{
+  display:grid;
+  grid-template-columns:repeat(4,var(--cell));
+  grid-template-rows:repeat(4,var(--cell));
+  gap:var(--gap);
+}
+.cell-bg{background:var(--empty);border-radius:var(--r)}
 
-    .dot {
-      width: var(--dot-size);
-      height: var(--dot-size);
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 32%, #ff6b6b, #e0160a 55%, #8b0000);
-      box-shadow:
-        0 0 0 2px rgba(220,30,20,0.18),
-        0 4px 14px rgba(200,20,10,0.40);
-      transform: scale(0);
-      opacity: 0;
-      transition:
-        transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
-        opacity 0.18s ease;
-      pointer-events: none;
-    }
+.tiles-layer{position:absolute;inset:var(--gap);pointer-events:none}
 
-    .cell.active .dot {
-      transform: scale(1);
-      opacity: 1;
-    }
+.tile{
+  position:absolute;
+  width:var(--cell);height:var(--cell);
+  border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;
+  transition:left var(--trans) ease,top var(--trans) ease;
+  will-change:left,top;
+  z-index:1;
+}
 
-    /* subtle pulse on active cells */
-    .cell.active::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: var(--radius);
-      box-shadow: inset 0 0 0 1.5px rgba(220,30,20,0.18);
-      pointer-events: none;
-    }
+/* spawn: scale from 0 */
+@keyframes spawn{
+  from{transform:scale(0);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
+/* merge pop */
+@keyframes pop{
+  0%  {transform:scale(1)}
+  40% {transform:scale(1.2)}
+  70% {transform:scale(.95)}
+  100%{transform:scale(1)}
+}
+.tile.new-born{animation:spawn .2s cubic-bezier(.34,1.56,.64,1) both}
+.tile.merged  {animation:pop   .2s cubic-bezier(.34,1.56,.64,1) both;z-index:2}
 
-    .counter {
-      margin-top: calc(var(--gap) * 2);
-      font-size: clamp(0.78rem, 2.5vmin, 0.95rem);
-      color: #b0a89e;
-      letter-spacing: 0.08em;
-      user-select: none;
-      transition: color 0.3s;
-    }
+/* tile colors */
+.t2   {background:#eee4da;color:#776e65;font-size:clamp(1.4rem,7vmin,2.2rem)}
+.t4   {background:#ede0c8;color:#776e65;font-size:clamp(1.4rem,7vmin,2.2rem)}
+.t8   {background:#f2b179;color:#f9f6f2;font-size:clamp(1.4rem,7vmin,2.2rem)}
+.t16  {background:#f59563;color:#f9f6f2;font-size:clamp(1.2rem,6vmin,2rem)}
+.t32  {background:#f67c5f;color:#f9f6f2;font-size:clamp(1.2rem,6vmin,2rem)}
+.t64  {background:#f65e3b;color:#f9f6f2;font-size:clamp(1.2rem,6vmin,2rem)}
+.t128 {background:#edcf72;color:#f9f6f2;font-size:clamp(1rem,5vmin,1.7rem);box-shadow:0 0 0 2px rgba(237,207,114,.4)}
+.t256 {background:#edcc61;color:#f9f6f2;font-size:clamp(1rem,5vmin,1.7rem);box-shadow:0 0 0 2px rgba(237,204,97,.4)}
+.t512 {background:#edc850;color:#f9f6f2;font-size:clamp(1rem,5vmin,1.7rem);box-shadow:0 0 0 2px rgba(237,200,80,.4)}
+.t1024{background:#edc53f;color:#f9f6f2;font-size:clamp(.85rem,4vmin,1.35rem);box-shadow:0 0 8px rgba(237,197,63,.6)}
+.t2048{background:#edc22e;color:#f9f6f2;font-size:clamp(.85rem,4vmin,1.35rem);box-shadow:0 0 24px rgba(237,194,46,.8),0 0 6px rgba(237,194,46,.5)}
+.tbig {background:#3c3a32;color:#f9f6f2;font-size:clamp(.75rem,3.5vmin,1.1rem)}
 
-    .counter span {
-      font-weight: 700;
-      color: #e0160a;
-    }
-  </style>
+/* overlay */
+.overlay{
+  position:absolute;inset:0;border-radius:calc(var(--r)*1.2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;z-index:10;
+  opacity:0;pointer-events:none;
+  transition:opacity .35s;
+}
+.overlay.show{opacity:1;pointer-events:all}
+.overlay-win {background:rgba(237,194,46,.88)}
+.overlay-lose{background:rgba(100,90,82,.82);backdrop-filter:blur(3px)}
+.overlay h2{font-size:clamp(1.6rem,8vmin,2.8rem);font-weight:900;letter-spacing:-1px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.2)}
+.overlay-win h2{color:#7a5c00}
+.overlay p{font-size:clamp(.8rem,3vmin,1rem);color:rgba(255,255,255,.9);font-weight:600}
+.overlay-win p{color:#8a6a00}
+.overlay-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.obtn{border:none;border-radius:calc(var(--r)*0.7);padding:10px 22px;font-size:clamp(.8rem,3vmin,.95rem);font-weight:700;cursor:pointer;transition:transform .12s,filter .12s}
+.obtn:active{transform:scale(.95)}
+.obtn-primary{background:#776e65;color:#f9f6f2}
+.obtn-primary:hover{filter:brightness(1.15)}
+.obtn-secondary{background:rgba(255,255,255,.35);color:#5a4f46}
+.obtn-secondary:hover{background:rgba(255,255,255,.5)}
+
+.hint{width:var(--size);margin-top:calc(var(--gap)*.8);font-size:clamp(.6rem,2vmin,.78rem);color:#a09890;text-align:center;letter-spacing:.04em}
+</style>
 </head>
 <body>
-  <h1>Grid · Dots</h1>
-  <div class="grid" id="grid"></div>
-  <p class="counter">已点亮 <span id="count">0</span> / 16</p>
 
-  <script>
-    const grid = document.getElementById('grid');
-    const countEl = document.getElementById('count');
-    let activeCount = 0;
+<div class="header">
+  <div class="title">2048</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="scores">
+      <div class="score-box"><div class="label">Score</div><div class="val" id="score">0</div></div>
+      <div class="score-box"><div class="label">Best</div><div class="val" id="best">0</div></div>
+    </div>
+    <button class="btn-new" id="btnNew">New Game</button>
+  </div>
+</div>
 
-    for (let i = 0; i < 16; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'cell';
+<div class="board" id="board">
+  <div class="cells-bg" id="cellsBg"></div>
+  <div class="tiles-layer" id="tilesLayer"></div>
+  <div class="overlay overlay-win" id="overlayWin">
+    <h2>🎉 You Win!</h2>
+    <p>You reached 2048!</p>
+    <div class="overlay-btns">
+      <button class="obtn obtn-secondary" id="btnContinue">Continue</button>
+      <button class="obtn obtn-primary"   id="btnWinRestart">Restart</button>
+    </div>
+  </div>
+  <div class="overlay overlay-lose" id="overlayLose">
+    <h2>Game Over</h2>
+    <p>No more moves available.</p>
+    <div class="overlay-btns">
+      <button class="obtn obtn-primary" id="btnLoseRestart">Try Again</button>
+    </div>
+  </div>
+</div>
 
-      const dot = document.createElement('div');
-      dot.className = 'dot';
-      cell.appendChild(dot);
+<div class="hint">← → ↑ ↓ keys &nbsp;|&nbsp; swipe on mobile &nbsp;|&nbsp; click &amp; drag</div>
 
-      cell.addEventListener('click', () => {
-        const isActive = cell.classList.toggle('active');
-        activeCount += isActive ? 1 : -1;
-        countEl.textContent = activeCount;
-      });
+<script>
+(() => {
+'use strict';
 
-      grid.appendChild(cell);
+// ─── Constants ───────────────────────────────────────────
+const TRANS = 120;   // slide transition ms (must match CSS --trans)
+const N = 4;
+
+// ─── DOM refs ────────────────────────────────────────────
+const boardEl     = document.getElementById('board');
+const tilesLayer  = document.getElementById('tilesLayer');
+const cellsBg     = document.getElementById('cellsBg');
+const scoreEl     = document.getElementById('score');
+const bestEl      = document.getElementById('best');
+const overlayWin  = document.getElementById('overlayWin');
+const overlayLose = document.getElementById('overlayLose');
+
+// Build static background cells
+for (let i = 0; i < N * N; i++) {
+  const d = document.createElement('div');
+  d.className = 'cell-bg';
+  cellsBg.appendChild(d);
+}
+
+// ─── State ───────────────────────────────────────────────
+let grid;       // N×N  →  tile-id  (0 = empty)
+let vals;       // Map<id, number>
+let doms;       // Map<id, HTMLElement>
+let score, best, nextId, won, continueAfterWin, busy;
+
+// ─── Pixel helpers ───────────────────────────────────────
+// KEY FIX: read from actual rendered board width, not CSS variables
+// (CSS custom properties with calc() don't resolve to numbers via getComputedStyle)
+function step() {
+  const size = boardEl.clientWidth;           // border-box → full declared size
+  const gap  = size / 40;
+  const cell = (size - gap * 5) / 4;
+  return { gap, cell, s: cell + gap };
+}
+function px(idx) {
+  const { s } = step();
+  return idx * s;
+}
+
+// ─── Tile helpers ────────────────────────────────────────
+function cls(v) { return v <= 2048 ? 't' + v : 'tbig'; }
+
+function makeTile(id, v, r, c) {
+  const el = document.createElement('div');
+  el.className = 'tile ' + cls(v);
+  el.textContent = v;
+  el.style.left = px(c) + 'px';
+  el.style.top  = px(r) + 'px';
+  tilesLayer.appendChild(el);
+  doms.set(id, el);
+}
+
+function moveTile(id, r, c) {
+  const el = doms.get(id);
+  if (!el) return;
+  el.style.left = px(c) + 'px';
+  el.style.top  = px(r) + 'px';
+}
+
+function spawnTile(id, delayed) {
+  const el = doms.get(id);
+  if (!el) return;
+  const fn = () => { el.style.animation = ''; el.classList.add('new-born'); };
+  delayed ? setTimeout(fn, TRANS + 30) : requestAnimationFrame(() => requestAnimationFrame(fn));
+}
+
+function upgradeTile(id, newVal) {
+  const el = doms.get(id);
+  if (!el) return;
+  setTimeout(() => {
+    el.className = 'tile ' + cls(newVal) + ' merged';
+    el.textContent = newVal;
+  }, TRANS);
+}
+
+function removeTileEl(id, delay) {
+  const el = doms.get(id);
+  doms.delete(id);
+  if (!el) return;
+  setTimeout(() => el.remove(), delay);
+}
+
+// ─── Game helpers ─────────────────────────────────────────
+function emptyGrid()  { return Array.from({length:N}, () => new Array(N).fill(0)); }
+function emptyCells() {
+  const out = [];
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (!grid[r][c]) out.push([r,c]);
+  return out;
+}
+
+function addRandom(spawn, delayed) {
+  const cells = emptyCells();
+  if (!cells.length) return;
+  const [r,c] = cells[Math.floor(Math.random() * cells.length)];
+  const v  = Math.random() < 0.9 ? 2 : 4;
+  const id = nextId++;
+  grid[r][c] = id;
+  vals.set(id, v);
+  makeTile(id, v, r, c);
+  if (spawn) spawnTile(id, delayed);
+}
+
+function updateScore(gained) {
+  score += gained;
+  if (score > best) { best = score; localStorage.setItem('2048best', best); }
+  scoreEl.textContent = score;
+  bestEl.textContent  = best;
+}
+
+function hasMove() {
+  if (emptyCells().length) return true;
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    const v = vals.get(grid[r][c]);
+    if (c < N-1 && vals.get(grid[r][c+1]) === v) return true;
+    if (r < N-1 && vals.get(grid[r+1][c]) === v) return true;
+  }
+  return false;
+}
+
+function has2048() {
+  for (const v of vals.values()) if (v === 2048) return true;
+  return false;
+}
+
+function checkEnd() {
+  if (!continueAfterWin && !won && has2048()) {
+    won = true;
+    overlayWin.classList.add('show');
+    return;
+  }
+  if (!hasMove()) overlayLose.classList.add('show');
+}
+
+// ─── Slide algorithm ─────────────────────────────────────
+// Converts direction + line-index into grid [row, col]
+// dir 0=left 1=right 2=up 3=down
+function idx(dir, i, j) {
+  switch(dir) {
+    case 0: return [i,     j    ];
+    case 1: return [i,   N-1-j  ];
+    case 2: return [j,     i    ];
+    case 3: return [N-1-j, i    ];
+  }
+}
+
+// Slide one logical line (array of ids, 0=empty) leftward.
+// Returns { result, gained, changed, merges: [{survivorId, ghostId, finalJ}] }
+function slideLine(line) {
+  const src    = line.filter(id => id !== 0);
+  const result = new Array(N).fill(0);
+  const merges = [];
+  let gained = 0, ri = 0;
+
+  for (let k = 0; k < src.length; k++) {
+    const a = src[k], b = src[k+1];
+    if (b && vals.get(a) === vals.get(b)) {
+      const nv = vals.get(a) * 2;
+      gained += nv;
+      vals.set(a, nv);      // survivor keeps id `a`
+      vals.delete(b);        // ghost `b` removed from vals now
+      result[ri] = a;
+      merges.push({ survivorId: a, ghostId: b, finalJ: ri });
+      k++;                   // skip b
+    } else {
+      result[ri] = a;
     }
-  </script>
+    ri++;
+  }
+
+  const changed = line.some((id, j) => id !== result[j]);
+  return { result, gained, changed, merges };
+}
+
+// ─── Move ────────────────────────────────────────────────
+function move(dir) {
+  if (busy) return;
+
+  let anyChanged = false;
+  let totalGained = 0;
+  const allMerges = [];   // {survivorId, ghostId, finalRow, finalCol}
+
+  for (let i = 0; i < N; i++) {
+    const line = [];
+    for (let j = 0; j < N; j++) line.push(grid[idx(dir,i,j)[0]][idx(dir,i,j)[1]]);
+
+    const { result, gained, changed, merges } = slideLine(line);
+    if (changed) anyChanged = true;
+    totalGained += gained;
+
+    // Write new grid
+    for (let j = 0; j < N; j++) {
+      const [r,c] = idx(dir, i, j);
+      grid[r][c] = result[j];
+    }
+
+    // Record merge destinations in real grid coords
+    for (const m of merges) {
+      const [fr, fc] = idx(dir, i, m.finalJ);
+      allMerges.push({ ...m, finalRow: fr, finalCol: fc });
+    }
+  }
+
+  if (!anyChanged) return;
+
+  busy = true;
+  updateScore(totalGained);
+
+  // 1. Move ALL surviving tiles to new positions (CSS transition fires)
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    const id = grid[r][c];
+    if (id) moveTile(id, r, c);
+  }
+
+  // 2. Animate ghost tiles: slide them to their merge destination, then remove
+  for (const { ghostId, finalRow, finalCol } of allMerges) {
+    const el = doms.get(ghostId);
+    if (el) {
+      // move ghost to merge target (same CSS transition)
+      el.style.left = px(finalCol) + 'px';
+      el.style.top  = px(finalRow) + 'px';
+      removeTileEl(ghostId, TRANS + 10);
+    }
+  }
+
+  // 3. Update survivor tile appearance after slide finishes
+  for (const { survivorId } of allMerges) {
+    upgradeTile(survivorId, vals.get(survivorId));
+  }
+
+  // 4. Spawn new random tile, then check end state
+  setTimeout(() => {
+    addRandom(true, false);   // spawn = true, not delayed (immediate rAF)
+    busy = false;
+    checkEnd();
+  }, TRANS + 30);
+}
+
+// ─── New game ────────────────────────────────────────────
+function newGame() {
+  tilesLayer.innerHTML = '';
+  grid   = emptyGrid();
+  vals   = new Map();
+  doms   = new Map();
+  score  = 0;
+  won    = false;
+  continueAfterWin = false;
+  busy   = false;
+  nextId = 1;
+
+  overlayWin.classList.remove('show');
+  overlayLose.classList.remove('show');
+  scoreEl.textContent = 0;
+  bestEl.textContent  = best;
+
+  // Start with 2 tiles — no delay, both visible immediately
+  addRandom(true, false);
+  addRandom(true, false);
+}
+
+// ─── Controls ────────────────────────────────────────────
+document.getElementById('btnNew').addEventListener('click', newGame);
+
+document.getElementById('btnContinue').addEventListener('click', () => {
+  continueAfterWin = true;
+  overlayWin.classList.remove('show');
+});
+document.getElementById('btnWinRestart').addEventListener('click',  newGame);
+document.getElementById('btnLoseRestart').addEventListener('click', newGame);
+
+// Keyboard
+const KEY_DIR = { ArrowLeft:0, ArrowRight:1, ArrowUp:2, ArrowDown:3 };
+window.addEventListener('keydown', e => {
+  const dir = KEY_DIR[e.key];
+  if (dir === undefined) return;
+  e.preventDefault();
+  move(dir);
+});
+
+// Touch / mouse swipe
+const MIN_DIST = 20;
+let ox = 0, oy = 0, dragging = false;
+
+function onStart(x, y) { ox = x; oy = y; dragging = true; }
+function onEnd(x, y) {
+  if (!dragging) return;
+  dragging = false;
+  const dx = x - ox, dy = y - oy;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < MIN_DIST) return;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 0 : 1) : (dy < 0 ? 2 : 3));
+}
+
+boardEl.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  onStart(t.clientX, t.clientY);
+}, { passive: true });
+boardEl.addEventListener('touchend', e => {
+  const t = e.changedTouches[0];
+  onEnd(t.clientX, t.clientY);
+}, { passive: true });
+boardEl.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
+window.addEventListener('mouseup',    e => { if (dragging) onEnd(e.clientX, e.clientY); });
+
+// ─── Init ────────────────────────────────────────────────
+best = +localStorage.getItem('2048best') || 0;
+bestEl.textContent = best;
+newGame();
+
+})();
+</script>
 </body>
 </html>
