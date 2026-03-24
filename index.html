@@ -55,6 +55,7 @@ body{
   position:relative;
   width:var(--size);height:var(--size);
   background:var(--board);
+  touch-action:none;
   border-radius:calc(var(--r)*1.2);
   padding:var(--gap);
   box-shadow:0 4px 20px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.12);
@@ -471,6 +472,9 @@ boardEl.addEventListener('touchstart', e => {
   const t = e.touches[0];
   onStart(t.clientX, t.clientY);
 }, { passive: true });
+boardEl.addEventListener('touchmove', e => {
+  e.preventDefault();   // block page scroll while swiping on board
+}, { passive: false });
 boardEl.addEventListener('touchend', e => {
   const t = e.changedTouches[0];
   onEnd(t.clientX, t.clientY);
